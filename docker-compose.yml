@@ -1,0 +1,145 @@
+version: '2'
+services:
+    rabbitmq:
+        build: ./services/rabbitmq
+        image: example/rabbitmq:3-management
+        hostname: example_rabbitmq
+        ports:
+            - 5672:5672
+            - 15672:15672
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.1
+        environment:
+            - RABBITMQ_DEFAULT_USER=user
+            - RABBITMQ_DEFAULT_PASS=password
+            - RABBITMQ_NODENAME=rabbit@example_rabbitmq
+        volumes:
+            - /home/example_docker/volumes/rabbitmq:/var/lib/rabbitmq
+        container_name: example_rabbitmq
+        
+    rabbitmq_listener:
+        build: ./services/rabbitmq_listener
+        depends_on:
+            - rabbitmq
+        image: example/rabbitmq_listener:3.5
+        hostname: example_rabbitmq_listener
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.2
+        volumes:
+            - /home/example_docker/volumes/rabbitmq_listener:/rabbitmq_listener
+        container_name: example_rabbitmq_listener
+    
+    mysqldb:
+        build: ./services/mysqldb
+        image: example/mysqldb:mysql5
+        hostname: example_mysqldb
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.4
+        ports:
+            - 3306:3306
+        environment:
+            - MYSQL_ROOT_PASSWORD=password
+            - MYSQL_DATABASE=db
+        volumes:
+            - /home/example/volumes/mysqldb:/var/lib/mysql
+        container_name: example_mysqldb
+ 
+    vsftpd:
+        build: ./services/vsftpd
+        image: example/vsftpd:latest
+        hostname: vsftpd
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.7
+        ports:
+            - 10.200.81.112:21:21
+            - 21100-21110:21100-21110
+        environment:
+            - FTP_USER=user
+            - FTP_PASS=password
+            - PASV_ADDRESS=192.168.0.1
+        volumes:
+            - /home/example/volumes/vsftpd:/home/vsftpd
+        container_name: example_vsftpd
+
+    flask:
+        build: ./services/flask
+        image: example/flask:3.5
+        hostname: example_api
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.8
+        ports:
+            - 7000:7000
+        volumes:
+            - /home/example/volumes/flask:/flask
+            - /home/example/volumes/certs:/certs
+        container_name: example_flask
+
+    nginx:
+        build: ./services/nginx
+        image: example/nginx:1.15
+        hostname: example_nginx
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.9
+        volumes:
+            - /home/example/volumes/nginx:/etc/nginx/conf.d
+        container_name: example_nginx
+        
+    portainer:
+        build: ./services/portainer
+        image: example/portainer
+        hostname: example_portainer
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.10
+        ports:
+            - 9000:9000
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /home/example/volumes/portainer:/data
+        container_name: example_portainer
+        
+    jupyterhub:
+        build: ./services/jupyterhub
+        image: example/jupyterhub:3.7
+        hostname: example_jupyterhub
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.12
+        ports:
+            - 8000:8000
+        volumes:
+            - /home/example/volumes/jupyterhub:/home
+            - /home/example/volumes/flask:/services/flask
+            - /home/example/volumes/certs:/services/certs
+            - /home/example/volumes/nginx:/services/nginx
+            - /home/example/volumes/rabbitmq_listener:/services/rabbitmq_listener
+            - /home/example/volumes/db_loader:/services/db_loader
+        container_name: example_jupyterhub
+    
+    db_loader:
+        build: ./services/db_loader
+        image: example/db_loader:3.5
+        hostname: db_loader
+        networks:
+            example_network:
+                ipv4_address: 172.20.0.16
+        volumes:
+            - /home/example/volumes/db_loader:/db_loader
+            - /home/example/volumes/rabbitmq_listener:/rabbitmq_listener
+        container_name: example_db_loader
+    
+
+networks:
+    example_network:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 172.20.0.0/24
+                  gateway: 172.20.0.254
+ 
